@@ -1,30 +1,32 @@
-from flask import render_template, request, make_response, Response
-from datetime import datetime
+from flask import request, make_response, Response
 
 import flask
+import logging
 
 app = flask.Flask(__name__)
 
 
 @app.route("/", methods=["GET", "POST"])
 def guess() -> Response:
-    user_guess: int = 0
-    if str(request.form["guess"]).isdigit():
-        user_guess = int(request.form["guess"])
+    user_guess: int = -1
+    try:
+        form_data: str = request.get_data(as_text=True)
+        user_guess = int(form_data.split("=")[1])
+    except:
+        logging.warn("We couldn't get a user answer")
 
     answer: int = 42
     user_message: str = ""
 
-    if user_guess < answer:
-        user_message = "Your guess is too low"
+    if 0 < user_guess < answer:
+        user_message = f"Your guess is {user_guess}. Your guess is too low."
     elif user_guess > answer:
-        user_message = "Your guess is too high"
-    else:
-        user_message = "Congratulations!"
+        user_message = f"Your guess is {user_guess}. Your guess is too high."
+    elif user_guess == answer:
+        user_message = f"Your guess is {user_guess}. Congratulations!"
 
     response_html: str = f"""<pre>
-            Your guess is {user_guess}. 
-            {user_message}.
+            {user_message}
             </pre>
             <form method='post' action='/'>
             <p>Enter Guess: <input type='text' name='guess'/></p>
@@ -38,22 +40,25 @@ def guess() -> Response:
     return response_object
 
 
-@app.route("/about/")
-def about():
-    return render_template("about.html")
+@app.route("/dump", methods=["GET", "POST"])
+def dump() -> Response:
+    response_html: str = """
+        <form method='post' action='/dump'>
+        Zap Data: <input type="text" name="zap"><br/>
+        Zot Data: <input type="text" name="zot"><br/>
+        <input type="submit">
+        </form>
+        """
 
+    environment_string: str = "<p><h1>Environment Dictionary:</h1><br/>"
+    for variable_name, variable_value in request.environ.items():
+        environment_string += f"{variable_name}: {variable_value}<br/>"
 
-@app.route("/contact/")
-def contact():
-    return render_template("contact.html")
+    environment_string += (
+        f"<h1>Request Body Data</h1> <br/> {request.get_data(as_text=True)} </p>"
+    )
 
+    response_object: Response = make_response(response_html + environment_string)
+    response_object.headers["Content-Type"] = "text/html"
 
-@app.route("/hello/")
-@app.route("/hello/<name>")
-def hello_there(name=None):
-    return render_template("hello_there.html", name=name, date=datetime.now())
-
-
-@app.route("/api/data")
-def get_data():
-    return app.send_static_file("data.json")
+    return response_object
