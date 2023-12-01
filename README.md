@@ -15,6 +15,12 @@ Then select your target subscription:
 az account set -s SUSCRIPTION_ID     
 ```
 
+You can check your active suscription with:
+
+```
+az account show
+```
+
 And finally deploy the ZIP file you created:
 
 ```
